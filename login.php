@@ -2,18 +2,32 @@
 session_start();
 require('dbconnect.php');
 
+if ($_COOKIE['email'] !== '') {
+  $email = $_COOKIE['email'];
+}
+
 if (!empty($_POST)) {
-  if ($_POST['email'] !== '' && $_POST['pass'] !== '') {
+  $email = htmlspecialchars($_POST['email'], ENT_QUOTES);
+  $pass  = htmlspecialchars($_POST['pass'], ENT_QUOTES);
+
+  if ($email !== '' && $pass !== '') {
     $login = $db->prepare('SELECT * FROM members WHERE email=? AND pass=?');
-    $login->execute(array($_POST['email'],sha1($_POST['pass'])));
+    $login->execute(array($email, sha1($pass)));
     $member = $login->fetch();
 
     if ($member) {
       $_SESSION['id'] = $member['id'];
       $_SESSION['time'] = time();
+      if ($_POST['save'] === 'on') {
+        setcookie('email', $_POST['email'], time()+60*60*24*14);
+      }
       header('Location: index.php');
       exit();
+    } else {
+      $error['login'] = 'failde';
     }
+  } else {
+    $error['login'] = 'blank';
   }
 }
 ?>
@@ -40,11 +54,17 @@ if (!empty($_POST)) {
       <dl>
         <dt>メールアドレス</dt>
         <dd>
-          <input type="text" name="email" size="35" maxlength="255" value="<?php echo htmlspecialchars($_POST['email']); ?>" />
+          <input type="text" name="email" size="35" maxlength="255" value="<?php echo $email; ?>" />
+          <?php if ($error['login'] === 'blank'): ?>
+            <p class="error">メールアドレスとパスワードを記入してください。</p>
+          <?php endif ; ?>
+          <?php if ($error['login'] === 'failde'): ?>
+            <p class="error">ログインに失敗しました。正しく記入してください。</p>
+          <?php endif ; ?>
         </dd>
         <dt>パスワード</dt>
         <dd>
-          <input type="password" name="password" size="35" maxlength="255" value="<?php echo htmlspecialchars($_POST['password']); ?>" />
+          <input type="password" name="pass" size="35" maxlength="255" value="<?php echo $pass; ?>" />
         </dd>
         <dt>ログイン情報の記録</dt>
         <dd>
